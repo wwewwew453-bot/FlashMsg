@@ -1,48 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>FlashMSG - Друзі</title>
+    <title>Чат з {{ friend.username }}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; padding: 20px; }
-        .section { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
-        .user-card { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; align-items: center; }
-        .btn { padding: 8px 15px; border-radius: 5px; text-decoration: none; color: white; font-weight: bold; }
-        .btn-add { background: #0084ff; }
-        .btn-chat { background: #28a745; }
+        body { font-family: sans-serif; background: #121212; color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        .header { padding: 15px; background: #1e1e1e; border-bottom: 1px solid #333; }
+        #chat-box { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
+        .input-area { padding: 20px; background: #1e1e1e; display: flex; gap: 10px; }
+        input { flex-grow: 1; padding: 12px; border-radius: 5px; border: none; background: #333; color: white; }
+        button { padding: 10px 20px; background: #0084ff; border: none; color: white; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h2>Привіт, {{ current_user.username }}!</h2>
-    <a href="/logout" style="color: #ff4d4d;">Вийти</a>
-
-    <div class="section">
-        <h3>Запити в друзі</h3>
-        {% for r in requests %}
-            <div class="user-card">
-                <span>{{ r.sender.username }}</span>
-                <a href="{{ url_for('accept_friend', req_id=r.id) }}" class="btn btn-chat">✅ Прийняти</a>
-            </div>
+    <div class="header">
+        <a href="/" style="color: #0084ff; text-decoration: none;">← Назад</a>
+        <span style="margin-left: 20px;">Спілкування з <b>{{ friend.username }}</b></span>
+    </div>
+    <div id="chat-box">
+        {% for m in history %}
+            <p><b>{{ m.sender_id == current_user.id and 'Ви' or friend.username }}:</b> {{ m.content }}</p>
         {% endfor %}
     </div>
-
-    <div class="section">
-        <h3>Твої друзі</h3>
-        {% for f in friends %}
-            <div class="user-card">
-                <span>👤 {{ f.username }}</span>
-                <a href="{{ url_for('chat', friend_id=f.id) }}" class="btn btn-chat">Написати</a>
-            </div>
-        {% endfor %}
+    <div class="input-area">
+        <input type="text" id="message" placeholder="Напишіть щось..." onkeypress="if(event.key==='Enter')send()">
+        <button onclick="send()">Надіслати</button>
     </div>
-
-    <div class="section">
-        <h3>Всі користувачі</h3>
-        {% for u in all_users %}
-            <div class="user-card">
-                <span>{{ u.username }}</span>
-                <a href="{{ url_for('add_friend', user_id=u.id) }}" class="btn btn-add">➕ Додати</a>
-            </div>
-        {% endfor %}
-    </div>
+    <script>
+        var socket = io();
+        var friendId = {{ friend.id }};
+        socket.emit('join', { friend_id: friendId });
+        function send() {
+            var input = document.getElementById('message');
+            if(input.value.trim()){
+                socket.emit('private_message', { recipient_id: friendId, message: input.value });
+                input.value = '';
+            }
+        }
+        socket.on('new_message', function(data) {
+            var p = document.createElement('p');
+            p.innerHTML = '<b>' + data.sender + ':</b> ' + data.msg;
+            var box = document.getElementById('chat-box');
+            box.appendChild(p);
+            box.scrollTop = box.scrollHeight;
+        });
+    </script>
 </body>
 </html>
