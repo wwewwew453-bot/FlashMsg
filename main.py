@@ -113,3 +113,9 @@ def handle_message(msg):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     socketio.run(app, host='0.0.0.0', port=port)
+@app.route('/reset_db')
+def reset_db():
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+    return "Базу очищено! Тепер зареєструйся заново."
