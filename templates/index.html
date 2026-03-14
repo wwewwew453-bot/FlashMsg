@@ -5,28 +5,28 @@
     <style>
         body { font-family: sans-serif; background: #121212; color: white; padding: 20px; }
         .section { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
-        .user-card { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; }
-        .btn { padding: 5px 10px; border-radius: 5px; text-decoration: none; color: white; }
+        .user-card { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; align-items: center; }
+        .btn { padding: 8px 15px; border-radius: 5px; text-decoration: none; color: white; font-weight: bold; }
         .btn-add { background: #0084ff; }
         .btn-chat { background: #28a745; }
     </style>
 </head>
 <body>
-    <h2>Вітаємо, {{ current_user.username }}!</h2>
-    <a href="/logout" style="color: red;">Вихід</a>
+    <h2>Привіт, {{ current_user.username }}!</h2>
+    <a href="/logout" style="color: #ff4d4d;">Вийти</a>
 
     <div class="section">
         <h3>Запити в друзі</h3>
         {% for r in requests %}
             <div class="user-card">
                 <span>{{ r.sender.username }}</span>
-                <a href="{{ url_for('accept_friend', req_id=r.id) }}" class="btn btn-chat">Прийняти</a>
+                <a href="{{ url_for('accept_friend', req_id=r.id) }}" class="btn btn-chat">✅ Прийняти</a>
             </div>
         {% endfor %}
     </div>
 
     <div class="section">
-        <h3>Ваші друзі</h3>
+        <h3>Твої друзі</h3>
         {% for f in friends %}
             <div class="user-card">
                 <span>👤 {{ f.username }}</span>
@@ -40,7 +40,7 @@
         {% for u in all_users %}
             <div class="user-card">
                 <span>{{ u.username }}</span>
-                <a href="{{ url_for('add_friend', user_id=u.id) }}" class="btn btn-add">Додати</a>
+                <a href="{{ url_for('add_friend', user_id=u.id) }}" class="btn btn-add">➕ Додати</a>
             </div>
         {% endfor %}
     </div>
