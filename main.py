@@ -7,6 +7,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '1234'
+
+# Налаштування шляху бази даних для Render
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'flashmsg.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -16,6 +18,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# Моделі
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -25,17 +28,18 @@ class User(UserMixin, db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# ЦЕ ВИПРАВИТЬ "NO SUCH TABLE"
-@app.before_request
-def setup():
+# ГАРАНТОВАНЕ СТВОРЕННЯ ТАБЛИЦЬ
+with app.app_context():
     db.create_all()
 
 @app.route('/')
 @login_required
 def index():
-    # Тепер таблиця User точно існуватиме
-    all_users = User.query.filter(User.id != current_user.id).all()
-    return render_template('index.html', all_users=all_users)
+    try:
+        all_users = User.query.filter(User.id != current_user.id).all()
+        return render_template('index.html', all_users=all_users)
+    except Exception as e:
+        return f"Помилка доступу до бази: {e}. Спробуйте оновити сторінку."
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -56,13 +60,16 @@ def register():
         return redirect(url_for('login'))
     return render_template('register.html')
 
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
 @socketio.on('message')
 def handle_message(msg):
     if current_user.is_authenticated:
         emit('message', {'user': current_user.username, 'msg': msg}, broadcast=True)
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     port = int(os.environ.get("PORT", 10000))
     socketio.run(app, host='0.0.0.0', port=port)
