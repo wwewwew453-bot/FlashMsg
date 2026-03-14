@@ -1,9 +1,8 @@
 import os
-from flask import Flask, render_template, redirect, url_for, flash, request
+from flask import Flask, render_template, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
-from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
@@ -26,13 +25,20 @@ class Friendship(db.Model):
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     status = db.Column(db.String(20), default='pending')
-    
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_requests')
     receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_requests')
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+@app.route('/')
+@login_required
+def index():
+    all_users = User.query.filter(User.id != current_user.id).all()
+    friends = Friendship.query.filter(((Friendship.sender_id == current_user.id) | (Friendship.receiver_id == current_user.id)) & (Friendship.status == 'accepted')).all()
+    requests = Friendship.query.filter_by(receiver_id=current_user.id, status='pending').all()
+    return render_template('intel.html', all_users=all_users, friends=friends, requests=requests)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -41,7 +47,6 @@ def login():
         if user and check_password_hash(user.password, request.form['password']):
             login_user(user)
             return redirect(url_for('index'))
-        flash('Помилка входу')
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -53,19 +58,6 @@ def register():
         db.session.commit()
         return redirect(url_for('login'))
     return render_template('register.html')
-
-@app.route('/logout')
-def logout():
-    logout_user()
-    return redirect(url_for('login'))
-
-@app.route('/')
-@login_required
-def index():
-    all_users = User.query.filter(User.id != current_user.id).all()
-    friends = Friendship.query.filter(((Friendship.sender_id == current_user.id) | (Friendship.receiver_id == current_user.id)) & (Friendship.status == 'accepted')).all()
-    requests = Friendship.query.filter_by(receiver_id=current_user.id, status='pending').all()
-    return render_template('intel.html', all_users=all_users, friends=friends, requests=requests)
 
 @app.route('/add_friend/<int:user_id>')
 @login_required
@@ -84,6 +76,11 @@ def accept_friend(req_id):
         req.status = 'accepted'
         db.session.commit()
     return redirect(url_for('index'))
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
 
 @socketio.on('message')
 def handle_message(msg):
