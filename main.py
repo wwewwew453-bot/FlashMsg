@@ -38,7 +38,8 @@ def index():
     all_users = User.query.filter(User.id != current_user.id).all()
     friends = Friendship.query.filter(((Friendship.sender_id == current_user.id) | (Friendship.receiver_id == current_user.id)) & (Friendship.status == 'accepted')).all()
     requests = Friendship.query.filter_by(receiver_id=current_user.id, status='pending').all()
-    return render_template('intel.html', all_users=all_users, friends=friends, requests=requests)
+    # ТУТ ЗМІНЕНО НА index.html
+    return render_template('index.html', all_users=all_users, friends=friends, requests=requests)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
