@@ -1,13 +1,15 @@
 import os
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import Flask, render_template, redirect, url_for, request, flash, render_template_string
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
 from werkzeug.security import generate_password_hash, check_password_hash
 
-app = Flask(__name__, template_folder='templates') # Явно вказуємо папку з шаблонами
+app = Flask(__name__)
 app.config['SECRET_KEY'] = '1234'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///flashmsg.db'
+# Використовуємо абсолютний шлях для бази на Render
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'flashmsg.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -15,7 +17,6 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Моделі
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -33,7 +34,6 @@ class Friendship(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Головна сторінка
 @app.route('/')
 @login_required
 def index():
@@ -43,34 +43,30 @@ def index():
         requests = Friendship.query.filter_by(receiver_id=current_user.id, status='pending').all()
         return render_template('index.html', all_users=all_users, friends=friends, requests=requests)
     except Exception as e:
-        return f"Помилка шаблону: {e}. Перевір, чи є файл templates/index.html"
+        return render_template_string("<h1>Помилка сервера: {{ e }}</h1><p>Перевір, чи лежить index.html у папці templates</p>", e=str(e))
 
-# Вхід / Реєстрація
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        user = User.query.filter_by(username=request.form['username']).first()
-        if user and check_password_hash(user.password, request.form['password']):
+        user = User.query.filter_by(username=request.form.get('username')).first()
+        if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('index'))
+        return "Помилка: логін або пароль невірні", 401
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        hashed_pw = generate_password_hash(request.form['password'])
-        new_user = User(username=request.form['username'], password=hashed_pw)
+        user = User.query.filter_by(username=request.form.get('username')).first()
+        if user: return "Користувач вже існує", 400
+        hashed_pw = generate_password_hash(request.form.get('password'))
+        new_user = User(username=request.form.get('username'), password=hashed_pw)
         db.session.add(new_user)
         db.session.commit()
         return redirect(url_for('login'))
     return render_template('register.html')
 
-@app.route('/logout')
-def logout():
-    logout_user()
-    return redirect(url_for('login'))
-
-# Сокети для чату
 @socketio.on('message')
 def handle_message(msg):
     if current_user.is_authenticated:
