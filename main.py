@@ -17,7 +17,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Моделі
+# МОДЕЛІ ДЛЯ ДРУЗІВ ТА ПОВІДОМЛЕНЬ
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -27,7 +27,7 @@ class Friendship(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    status = db.Column(db.String(20), default='pending') 
+    status = db.Column(db.String(20), default='pending') # 'pending' або 'accepted'
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_reqs')
     receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_reqs')
 
@@ -48,14 +48,13 @@ with app.app_context():
 @login_required
 def index():
     all_users = User.query.filter(User.id != current_user.id).all()
-    # Тільки підтверджені друзі
+    # Тільки ПРИЙНЯТІ друзі
     friendships = Friendship.query.filter(
         or_(
             and_(Friendship.sender_id == current_user.id, Friendship.status == 'accepted'),
             and_(Friendship.receiver_id == current_user.id, Friendship.status == 'accepted')
         )
     ).all()
-    
     friends = [f.receiver if f.sender_id == current_user.id else f.sender for f in friendships]
     requests = Friendship.query.filter_by(receiver_id=current_user.id, status='pending').all()
     return render_template('index.html', all_users=all_users, friends=friends, requests=requests)
@@ -64,6 +63,7 @@ def index():
 @login_required
 def chat(friend_id):
     friend = User.query.get_or_404(friend_id)
+    # Історія листування з бази
     history = Message.query.filter(
         or_(
             and_(Message.sender_id == current_user.id, Message.recipient_id == friend_id),
@@ -117,10 +117,12 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+# SOCKETIO ДЛЯ ОСОБИСТИХ ПОВІДОМЛЕНЬ
 @socketio.on('private_message')
 def handle_private_message(data):
     recipient_id = data['recipient_id']
     content = data['message']
+    # Зберігаємо в базу
     new_msg = Message(sender_id=current_user.id, recipient_id=recipient_id, content=content)
     db.session.add(new_msg)
     db.session.commit()
