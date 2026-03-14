@@ -1,10 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Чат з {{ friend.username }}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #121212; color: white; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+        .header { padding: 20px; background: #1e1e1e; border-bottom: 1px solid #333; }
+        #chat-box { flex-grow: 1; padding: 20px; overflow-y: auto; }
+        .input-area { padding: 20px; background: #1e1e1e; display: flex; gap: 10px; }
+        input { flex-grow: 1; padding: 10px; border-radius: 5px; border: none; background: #333; color: white; }
+        button { padding: 10px 20px; background: #0084ff; border: none; color: white; border-radius: 5px; cursor: pointer; }
+    </style>
 </head>
 <body>
+    <div class="header">
+        <a href="/" style="color: #0084ff; text-decoration: none;">← Назад</a>
+        <span style="margin-left: 20px;">Чат з <b>{{ friend.username }}</b></span>
+    </div>
 
+    <div id="chat-box">
+        {% for m in history %}
+            <p><b>{{ m.sender_id == current_user.id and 'Ви' or friend.username }}:</b> {{ m.content }}</p>
+        {% endfor %}
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="message" placeholder="Напишіть повідомлення..." onkeypress="if(event.key==='Enter')send()">
+        <button onclick="send()">Надіслати</button>
+    </div>
+
+    <script>
+        var socket = io();
+        var friendId = {{ friend.id }};
+
+        socket.emit('join', { friend_id: friendId });
+
+        function send() {
+            var input = document.getElementById('message');
+            if(input.value.trim()){
+                socket.emit('private_message', {
+                    recipient_id: friendId,
+                    message: input.value
+                });
+                input.value = '';
+            }
+        }
+
+        socket.on('new_message', function(data) {
+            var p = document.createElement('p');
+            p.innerHTML = '<b>' + data.sender + ':</b> ' + data.msg;
+            var box = document.getElementById('chat-box');
+            box.appendChild(p);
+            box.scrollTop = box.scrollHeight;
+        });
+    </script>
 </body>
 </html>
