@@ -1,104 +1,101 @@
-from flask import Flask, render_template
-from flask_socketio import SocketIO, emit
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
 import os
+from flask import Flask, render_template, redirect, url_for, flash, request
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from datetime import datetime
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'flashmsg-super-secret-key'
-
-# Налаштування бази даних
-basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'chat.db')
+app.config['SECRET_KEY'] = 'your_secret_key_here'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///flashmsg.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
 
-# ВАЖЛИВО: Явно вказуємо gevent для Render, щоб уникнути конфліктів з eventlet
-socketio = SocketIO(app, 
-    cors_allowed_origins="*", 
-    async_mode='gevent',
-    manage_session=False
-)
+# --- МОДЕЛІ ---
 
-# Моделі бази даних
-class User(db.Model):
+class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
+    password = db.Column(db.String(100), nullable=False)
 
-class Message(db.Model):
+class Friendship(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50))
-    content = db.Column(db.Text)
-    timestamp = db.Column(db.String(10))
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending')  # 'pending' або 'accepted'
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-# Створення бази при запуску
-with app.app_context():
-    db.create_all()
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_requests')
+    receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_requests')
+
+# --- ЛОГІКА ДРУЗІВ ---
+
+@app.route('/add_friend/<int:user_id>')
+@login_required
+def add_friend(user_id):
+    if user_id == current_user.id:
+        return redirect(url_for('index'))
+    
+    # Перевірка на існуючий запит
+    exists = Friendship.query.filter(
+        ((Friendship.sender_id == current_user.id) & (Friendship.receiver_id == user_id)) |
+        ((Friendship.sender_id == user_id) & (Friendship.receiver_id == current_user.id))
+    ).first()
+
+    if not exists:
+        new_req = Friendship(sender_id=current_user.id, receiver_id=user_id)
+        db.session.add(new_req)
+        db.session.commit()
+        flash("Запит надіслано!")
+    return redirect(url_for('index'))
+
+@app.route('/accept_friend/<int:req_id>')
+@login_required
+def accept_friend(req_id):
+    req = Friendship.query.get_or_404(req_id)
+    if req.receiver_id == current_user.id:
+        req.status = 'accepted'
+        db.session.commit()
+        flash("Запит прийнято!")
+    return redirect(url_for('index'))
+
+@app.route('/reject_friend/<int:req_id>')
+@login_required
+def reject_friend(req_id):
+    req = Friendship.query.get_or_404(req_id)
+    if req.receiver_id == current_user.id or req.sender_id == current_user.id:
+        db.session.delete(req)
+        db.session.commit()
+        flash("Запит видалено")
+    return redirect(url_for('index'))
+
+# --- ОСНОВНІ МАРШРУТИ ---
 
 @app.route('/')
+@login_required
 def index():
-    return render_template('index.html')
-
-# Обробка входу та реєстрації
-@socketio.on('login_or_register')
-def handle_login(data):
-    username = data.get('username', '').strip()
-    password = data.get('password', '').strip()
+    # Отримуємо всіх користувачів для пошуку (крім себе)
+    all_users = User.query.filter(User.id != current_user.id).all()
     
-    if not username or not password:
-        emit('login_error', {'msg': 'Введіть логін та пароль!'})
-        return
+    # Отримуємо підтверджених друзів
+    friends = Friendship.query.filter(
+        ((Friendship.sender_id == current_user.id) | (Friendship.receiver_id == current_user.id)) & 
+        (Friendship.status == 'accepted')
+    ).all()
 
-    user = User.query.filter_by(username=username).first()
+    # Отримуємо вхідні запити
+    pending_requests = Friendship.query.filter_by(receiver_id=current_user.id, status='pending').all()
     
-    if not user:
-        # Реєстрація нового користувача
-        hashed_pw = generate_password_hash(password)
-        new_user = User(username=username, password=hashed_pw)
-        db.session.add(new_user)
-        db.session.commit()
-        emit('login_success', {'username': username})
-    else:
-        # Перевірка пароля існуючого користувача
-        if check_password_hash(user.password, password):
-            emit('login_success', {'username': username})
-        else:
-            emit('login_error', {'msg': 'Невірний пароль!'})
+    return render_template('intel.html', all_users=all_users, friends=friends, requests=pending_requests)
 
-# Обробка текстових повідомлень
-@socketio.on('send_message')
-def handle_message(data):
-    now = datetime.now().strftime("%H:%M")
-    emit('receive_message', {
-        'username': data['username'], 
-        'message': data['message'], 
-        'time': now
-    }, broadcast=True)
-
-# Обробка зображень
-@socketio.on('send_image')
-def handle_image(data):
-    now = datetime.now().strftime("%H:%M")
-    emit('receive_message', {
-        'username': data['username'], 
-        'image': data['image'], 
-        'time': now
-    }, broadcast=True)
-
-# Очищення чату (локально у клієнтів)
-@socketio.on('clear_chat')
-def handle_clear():
-    emit('chat_cleared', broadcast=True)
-
-# Друк статусу "пише..."
-@socketio.on('typing')
-def handle_typing(data):
-    emit('display_typing', {'username': data['username']}, broadcast=True, include_self=False)
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 if __name__ == '__main__':
-    # Для локального запуску, Render використовує Gunicorn
-    port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host='0.0.0.0', port=port)
+    with app.app_context():
+        db.create_all()  # Створює таблицю Friendship, якщо її немає
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
