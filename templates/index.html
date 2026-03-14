@@ -2,155 +2,70 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlashMsg | Premium & Gifts</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <title>FlashMSG - Чат</title>
     <style>
-        :root {
-            --bg-dark: #0e1621; --bg-panel: #17212b; --accent: #40a7e3;
-            --text-main: #ffffff; --text-dim: #7f91a4; --gold: #ffcc00;
-        }
-        body { background: var(--bg-dark); color: var(--text-main); font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        
-        /* Вхід */
-        #login-overlay { position: fixed; inset: 0; background: var(--bg-dark); display: flex; justify-content: center; align-items: center; z-index: 100; }
-        .login-box { background: var(--bg-panel); padding: 40px; border-radius: 24px; text-align: center; width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .login-box input { display: block; width: 100%; margin: 12px 0; padding: 14px; border-radius: 12px; border: none; background: #242f3d; color: white; outline: none; box-sizing: border-box; }
-        .login-box button { width: 100%; background: var(--accent); color: white; border: none; padding: 14px; border-radius: 12px; cursor: pointer; font-weight: bold; }
-
-        /* Інтерфейс */
-        #main-container { display: none; width: 100%; height: 100%; flex-direction: row; }
-        .sidebar { width: 300px; background: var(--bg-panel); border-right: 1px solid #000; display: flex; flex-direction: column; }
-        .main-chat { flex: 1; display: flex; flex-direction: column; background: #0e1621; }
-
-        /* Профіль та Баланс */
-        .profile-section { padding: 20px; background: #1c2938; border-bottom: 1px solid #000; }
-        .balance-badge { background: rgba(255, 204, 0, 0.1); color: var(--gold); padding: 4px 10px; border-radius: 10px; font-size: 13px; font-weight: bold; border: 1px solid var(--gold); margin-top: 10px; display: inline-block; }
-
-        /* Магазин подарунків */
-        #gifts-menu { display: none; position: absolute; bottom: 80px; left: 20px; background: var(--bg-panel); padding: 15px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); z-index: 20; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        .gift-item { background: #242f3d; padding: 10px; border-radius: 10px; cursor: pointer; text-align: center; transition: 0.3s; border: 1px solid transparent; }
-        .gift-item:hover { border-color: var(--gold); background: #2b394a; }
-        .gift-item span { display: block; font-size: 24px; }
-        .gift-item small { color: var(--gold); font-size: 11px; }
-
-        /* Повідомлення */
-        #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-        .msg-row { display: flex; flex-direction: column; max-width: 70%; margin-bottom: 5px; }
-        .mine { align-self: flex-end; align-items: flex-end; }
-        .other { align-self: flex-start; }
-        .bubble { padding: 10px 15px; border-radius: 15px; background: #182533; position: relative; }
-        .mine .bubble { background: #2b5278; }
-        .gift-display { font-size: 40px; margin-bottom: -10px; z-index: 1; filter: drop-shadow(0 0 5px var(--gold)); }
-
-        /* Поле вводу */
-        .input-area { background: var(--bg-panel); padding: 15px; display: flex; gap: 10px; align-items: center; position: relative; }
-        .input-area input { flex: 1; background: #242f3d; border: none; color: white; padding: 12px; border-radius: 20px; outline: none; }
-        .icon-btn { cursor: pointer; font-size: 20px; transition: 0.2s; }
-        .icon-btn:hover { transform: scale(1.2); }
+        body { font-family: sans-serif; display: flex; margin: 0; background: #f0f2f5; }
+        .sidebar { width: 300px; background: white; height: 100vh; border-right: 1px solid #ddd; padding: 20px; overflow-y: auto; }
+        .main-chat { flex-grow: 1; padding: 20px; }
+        .section { margin-bottom: 30px; }
+        .user-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .btn { padding: 4px 8px; border: none; cursor: pointer; border-radius: 4px; text-decoration: none; font-size: 12px; }
+        .btn-add { background: #0084ff; color: white; }
+        .btn-ok { background: #28a745; color: white; }
+        .btn-no { background: #dc3545; color: white; }
+        .badge { background: #ff4444; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="login-overlay">
-        <div class="login-box">
-            <h2>FLASH<span style="color:#ffcc00">MSG</span></h2>
-            <input type="text" id="user" placeholder="@юзернейм">
-            <input type="password" id="pass" placeholder="Пароль">
-            <button onclick="login()">УВІЙТИ ⚡</button>
-            <p id="err" style="color:#ff4444; font-size:12px;"></p>
+<div class="sidebar">
+    <h2>FlashMSG</h2>
+    
+    <div class="section">
+        <h3>Запити {% if requests %}<span class="badge">{{ requests|length }}</span>{% endif %}</h3>
+        {% for req in requests %}
+        <div class="user-item">
+            <span>{{ req.sender.username }}</span>
+            <div>
+                <a href="{{ url_for('accept_friend', req_id=req.id) }}" class="btn btn-ok">✓</a>
+                <a href="{{ url_for('reject_friend', req_id=req.id) }}" class="btn btn-no">×</a>
+            </div>
         </div>
+        {% else %}
+        <p style="color: gray; font-size: 13px;">Немає нових запитів</p>
+        {% endfor %}
     </div>
 
-    <div id="main-container">
-        <div class="sidebar">
-            <div class="profile-section">
-                <div id="my-name" style="font-weight:bold; font-size:18px;">Користувач</div>
-                <div class="balance-badge">💰 <span id="balance">500</span> FC</div>
-            </div>
-            <div style="padding:20px; color:var(--text-dim); font-size:13px;">Магазин подарунків активний</div>
+    <div class="section">
+        <h3>Мої друзі</h3>
+        {% for f in friends %}
+        <div class="user-item">
+            <strong>
+                {% if f.sender_id == current_user.id %} {{ f.receiver.username }} 
+                {% else %} {{ f.sender.username }} {% endif %}
+            </strong>
+            <a href="{{ url_for('reject_friend', req_id=f.id) }}" class="btn btn-no" onclick="return confirm('Видалити?')">Видалити</a>
         </div>
-
-        <div class="main-chat">
-            <div id="chat"></div>
-
-            <div id="gifts-menu">
-                <div class="gift-item" onclick="sendGift('❤️', 50)"><span>❤️</span><small>50 FC</small></div>
-                <div class="gift-item" onclick="sendGift('🔥', 100)"><span>🔥</span><small>100 FC</small></div>
-                <div class="gift-item" onclick="sendGift('💎', 500)"><span>💎</span><small>500 FC</small></div>
-                <div class="gift-item" onclick="sendGift('🍕', 150)"><span>🍕</span><small>150 FC</small></div>
-            </div>
-
-            <div class="input-area">
-                <div class="icon-btn" onclick="toggleGifts()">🎁</div>
-                <input type="text" id="m" placeholder="Напишіть щось..." onkeypress="if(event.keyCode==13) send()">
-                <div class="icon-btn" onclick="send()" style="color:var(--accent)">➤</div>
-            </div>
-        </div>
+        {% else %}
+        <p style="color: gray; font-size: 13px;">Список порожній</p>
+        {% endfor %}
     </div>
 
-    <script>
-        var socket = io({ transports: ['websocket', 'polling'] });
-        var myName = "";
-        var myBalance = 500;
+    <div class="section">
+        <h3>Знайти людей</h3>
+        {% for user in all_users %}
+        <div class="user-item">
+            <span>{{ user.username }}</span>
+            <a href="{{ url_for('add_friend', user_id=user.id) }}" class="btn btn-add">Додати</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
 
-        function login() {
-            var u = document.getElementById('user').value.trim();
-            var p = document.getElementById('pass').value.trim();
-            if(u) socket.emit('login_or_register', {username: u, password: p});
-        }
+<div class="main-chat">
+    <h1>Вітаємо, {{ current_user.username }}!</h1>
+    <p>Оберіть друга зліва, щоб почати спілкування.</p>
+    </div>
 
-        socket.on('login_success', function(data) {
-            myName = data.username;
-            document.getElementById('my-name').innerText = myName;
-            document.getElementById('login-overlay').style.display = 'none';
-            document.getElementById('main-container').style.display = 'flex';
-        });
-
-        function send() {
-            var m = document.getElementById('m');
-            if(m.value.trim()) {
-                socket.emit('send_message', {username: myName, message: m.value, gift: null});
-                m.value = '';
-            }
-        }
-
-        function toggleGifts() {
-            var menu = document.getElementById('gifts-menu');
-            menu.style.display = (menu.style.display === 'grid') ? 'none' : 'grid';
-        }
-
-        function sendGift(emoji, price) {
-            if(myBalance >= price) {
-                myBalance -= price;
-                document.getElementById('balance').innerText = myBalance;
-                socket.emit('send_message', {
-                    username: myName, 
-                    message: `надіслав подарунок ${emoji}`, 
-                    gift: emoji 
-                });
-                toggleGifts();
-            } else {
-                alert("Недостатньо FlashCoins! Задонать ще 💸");
-            }
-        }
-
-        socket.on('receive_message', function(data) {
-            var c = document.getElementById('chat');
-            var isM = data.username === myName;
-            
-            var giftHtml = data.gift ? `<div class="gift-display">${data.gift}</div>` : '';
-            
-            c.innerHTML += `
-                <div class="msg-row ${isM ? 'mine' : 'other'}">
-                    ${giftHtml}
-                    <div class="bubble">
-                        <b style="color:var(--accent); font-size:12px;">${data.username}</b><br>
-                        ${data.message}
-                    </div>
-                </div>`;
-            c.scrollTop = c.scrollHeight;
-        });
-    </script>
 </body>
 </html>
