@@ -1,138 +1,48 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>FlashMsg | Быстрый мессенджер</title>
-    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/302/302353.png" type="image/png">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <title>FlashMSG - Друзі</title>
     <style>
-        body { background: #0e1621; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-
-        /* Логин */
-        #login-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:#0e1621; display:flex; justify-content:center; align-items:center; z-index:100; }
-        .login-box { background:#17212b; padding:40px; border-radius:20px; text-align:center; width: 300px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .login-box input { display:block; width:100%; margin:15px 0; padding:12px; border-radius:8px; border:none; background:#242f3d; color:white; box-sizing: border-box; }
-        .login-box button { width: 100%; background:#40a7e3; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; }
-
-        /* Интерфейс */
-        #main-container { display:none; width:100%; height: 100%; flex-direction:row; }
-        .sidebar { width: 300px; background: #17212b; border-right: 1px solid #0e1621; display: flex; flex-direction: column; }
-        .main-chat { flex: 1; display: flex; flex-direction: column; background: url('https://oshit.com/uploads/posts/2021-04/1618584852_41-p-fon-telegramm-45.jpg'); background-size: cover; }
-
-        .header { background: #17212b; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000; }
-        #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
-
-        .msg-row { display: flex; gap: 10px; max-width: 80%; margin: 4px 0; }
-        .mine { align-self: flex-end; flex-direction: row-reverse; }
-        .other { align-self: flex-start; }
-
-        .bubble { padding: 8px 12px; border-radius: 12px; background: #182533; font-size: 15px; }
-        .mine .bubble { background: #2b5278; }
-        .avatar { width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; }
-
-        .input-area { background: #17212b; padding: 15px; display: flex; gap: 12px; align-items: center; }
-        .input-area input { flex:1; background:transparent; border:none; color:white; outline:none; font-size: 16px; }
-        .btn { cursor: pointer; color: #40a7e3; font-weight: bold; }
+        body { font-family: sans-serif; background: #121212; color: white; padding: 20px; }
+        .section { background: #1e1e1e; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .user-card { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; }
+        .btn { padding: 5px 10px; border-radius: 5px; text-decoration: none; color: white; }
+        .btn-add { background: #0084ff; }
+        .btn-chat { background: #28a745; }
     </style>
 </head>
 <body>
+    <h2>Вітаємо, {{ current_user.username }}!</h2>
+    <a href="/logout" style="color: red;">Вихід</a>
 
-    <div id="login-overlay">
-        <div class="login-box">
-            <img src="https://cdn-icons-png.flaticon.com/512/302/302353.png" width="80" style="margin-bottom:15px">
-            <h2>FLASH<span style="color:#ffcc00">MSG</span></h2>
-            <input type="text" id="user" placeholder="Логин">
-            <input type="password" id="pass" placeholder="Пароль">
-            <button onclick="login()">ВХОД ⚡</button>
-            <p id="err" style="color:#e53935; font-size:12px; margin-top:10px;"></p>
-        </div>
+    <div class="section">
+        <h3>Запити в друзі</h3>
+        {% for r in requests %}
+            <div class="user-card">
+                <span>{{ r.sender.username }}</span>
+                <a href="{{ url_for('accept_friend', req_id=r.id) }}" class="btn btn-chat">Прийняти</a>
+            </div>
+        {% endfor %}
     </div>
 
-    <div id="main-container">
-        <div class="sidebar">
-            <div style="padding:20px; border-bottom:1px solid #0e1621"><b>FLASH MSG</b></div>
-            <div style="padding:15px; color:#40a7e3; font-size:13px;">Общий чат активен</div>
-        </div>
-        <div class="main-chat">
-            <div class="header">
-                <div>
-                    <h3 style="margin:0">FlashMsg Chat</h3>
-                    <div id="status" style="font-size:12px; color:#40a7e3; height:15px;"></div>
-                </div>
-                <div class="btn" style="color:#e53935; font-size:12px;" onclick="clearChat()">ОЧИСТИТЬ</div>
+    <div class="section">
+        <h3>Ваші друзі</h3>
+        {% for f in friends %}
+            <div class="user-card">
+                <span>👤 {{ f.username }}</span>
+                <a href="{{ url_for('chat', friend_id=f.id) }}" class="btn btn-chat">Написати</a>
             </div>
-            <div id="chat"></div>
-            <div class="input-area">
-                <label class="btn" style="font-size:20px;">📎<input type="file" id="f-in" style="display:none" onchange="upImg()"></label>
-                <input type="text" id="m" placeholder="Написать сообщение..." oninput="sendTyping()" onkeypress="if(event.keyCode==13) send()">
-                <div class="btn" onclick="send()">ОТПРАВИТЬ</div>
-            </div>
-        </div>
+        {% endfor %}
     </div>
 
-    <script>
-        var socket = io();
-        var myName = "";
-
-        function getClr(n) {
-            let clrs = ['#e17076', '#73c2fb', '#6fb466', '#ffc471', '#9470e4'];
-            return clrs[n.length % clrs.length];
-        }
-
-        function login() {
-            var u = document.getElementById('user').value;
-            var p = document.getElementById('pass').value;
-            if(u && p) socket.emit('login_or_register', {username: u, password: p});
-        }
-
-        socket.on('login_success', function(data) {
-            myName = data.username;
-            document.getElementById('login-overlay').style.display = 'none';
-            document.getElementById('main-container').style.display = 'flex';
-        });
-
-        socket.on('login_error', function(data) { document.getElementById('err').innerText = data.msg; });
-
-        function send() {
-            var m = document.getElementById('m');
-            if(m.value.trim()) {
-                socket.emit('send_message', {username: myName, message: m.value});
-                m.value = '';
-            }
-        }
-
-        function upImg() {
-            var file = document.getElementById('f-in').files[0];
-            var reader = new FileReader();
-            reader.onloadend = function() { socket.emit('send_image', {username: myName, image: reader.result}); }
-            if(file) reader.readAsDataURL(file);
-        }
-
-        socket.on('receive_message', function(data) {
-            var c = document.getElementById('chat');
-            var isM = data.username === myName;
-            var content = data.image ? `<img src="${data.image}" style="max-width:200px; border-radius:10px; display:block;">` : data.message;
-
-            c.innerHTML += `<div class="msg-row ${isM ? 'mine' : 'other'}">
-                <div class="avatar" style="background:${getClr(data.username)}">${data.username[0].toUpperCase()}</div>
-                <div class="bubble">
-                    ${!isM ? `<b style="color:#40a7e3; font-size:12px;">${data.username}</b><br>` : ''}
-                    ${content}
-                    <span style="font-size:10px; opacity:0.5; margin-left:10px;">${data.time}</span>
-                </div>
-            </div>`;
-            c.scrollTop = c.scrollHeight;
-            document.getElementById('status').innerText = '';
-        });
-
-        function sendTyping() { socket.emit('typing', {username: myName}); }
-        socket.on('display_typing', function(data) {
-            document.getElementById('status').innerText = data.username + ' печатает...';
-            setTimeout(() => document.getElementById('status').innerText = '', 2000);
-        });
-
-        function clearChat() { if(confirm("Удалить историю?")) socket.emit('clear_chat'); }
-        socket.on('chat_cleared', function() { document.getElementById('chat').innerHTML = ''; });
-    </script>
+    <div class="section">
+        <h3>Всі користувачі</h3>
+        {% for u in all_users %}
+            <div class="user-card">
+                <span>{{ u.username }}</span>
+                <a href="{{ url_for('add_friend', user_id=u.id) }}" class="btn btn-add">Додати</a>
+            </div>
+        {% endfor %}
+    </div>
 </body>
 </html>
