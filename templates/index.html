@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>FlashMsg | Быстрый мессенджер</title>
+    <title>FlashMsg | Швидкий месенджер</title>
     <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/302/302353.png" type="image/png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
@@ -33,9 +33,9 @@
         <div class="login-box">
             <img src="https://cdn-icons-png.flaticon.com/512/302/302353.png" width="80" style="margin-bottom:15px">
             <h2>FLASH<span style="color:#ffcc00">MSG</span></h2>
-            <input type="text" id="user" placeholder="Логин">
+            <input type="text" id="user" placeholder="Логін">
             <input type="password" id="pass" placeholder="Пароль">
-            <button onclick="login()">ВХОД ⚡</button>
+            <button onclick="login()">УВІЙТИ ⚡</button>
             <p id="err" style="color:#e53935; font-size:12px; margin-top:10px;"></p>
         </div>
     </div>
@@ -43,7 +43,7 @@
     <div id="main-container">
         <div class="sidebar">
             <div style="padding:20px; border-bottom:1px solid #0e1621"><b>FLASH MSG</b></div>
-            <div style="padding:15px; color:#40a7e3; font-size:13px;">Общий чат активен</div>
+            <div style="padding:15px; color:#40a7e3; font-size:13px;">Загальний чат активний</div>
         </div>
         <div class="main-chat">
             <div class="header">
@@ -51,19 +51,18 @@
                     <h3 style="margin:0">FlashMsg Chat</h3>
                     <div id="status" style="font-size:12px; color:#40a7e3; height:15px;"></div>
                 </div>
-                <div class="btn" style="color:#e53935; font-size:12px;" onclick="clearChat()">ОЧИСТИТЬ</div>
+                <div class="btn" style="color:#e53935; font-size:12px;" onclick="clearChat()">ОЧИСТИТИ</div>
             </div>
             <div id="chat"></div>
             <div class="input-area">
                 <label class="btn" style="font-size:20px;">📎<input type="file" id="f-in" style="display:none" onchange="upImg()"></label>
-                <input type="text" id="m" placeholder="Написать сообщение..." oninput="sendTyping()" onkeypress="if(event.keyCode==13) send()">
-                <div class="btn" onclick="send()">ОТПРАВИТЬ</div>
+                <input type="text" id="m" placeholder="Написати повідомлення..." oninput="sendTyping()" onkeypress="if(event.keyCode==13) send()">
+                <div class="btn" onclick="send()">ВІДПРАВИТИ</div>
             </div>
         </div>
     </div>
 
     <script>
-        // Настройка сокета специально для работы в интернете (Render)
         var socket = io({
             transports: ['websocket', 'polling'],
             upgrade: true
@@ -71,11 +70,11 @@
 
         var myName = "";
 
-        socket.on('connect', () => { console.log('Подключено к серверу!'); });
+        socket.on('connect', () => { console.log('Підключено до сервера!'); });
         
         socket.on('connect_error', (err) => {
-            console.error('Ошибка:', err);
-            document.getElementById('err').innerText = "Ошибка сети. Проверь интернет.";
+            console.error('Помилка:', err);
+            document.getElementById('err').innerText = "Помилка мережі. Перевір інтернет.";
         });
 
         function getClr(n) {
@@ -89,7 +88,7 @@
             if(u && p) {
                 socket.emit('login_or_register', {username: u, password: p});
             } else {
-                document.getElementById('err').innerText = "Введите логин и пароль!";
+                document.getElementById('err').innerText = "Введіть логін та пароль!";
             }
         }
 
@@ -100,7 +99,10 @@
         });
 
         socket.on('login_error', function(data) { 
-            document.getElementById('err').innerText = data.msg; 
+            // Переклад повідомлень про помилки від сервера
+            let msg = data.msg;
+            if(msg === "Неверный пароль!") msg = "Невірний пароль!";
+            document.getElementById('err').innerText = msg; 
         });
 
         function send() {
@@ -140,11 +142,11 @@
         function sendTyping() { if(myName) socket.emit('typing', {username: myName}); }
 
         socket.on('display_typing', function(data) {
-            document.getElementById('status').innerText = data.username + ' печатает...';
+            document.getElementById('status').innerText = data.username + ' пише...';
             setTimeout(() => document.getElementById('status').innerText = '', 2000);
         });
 
-        function clearChat() { if(confirm("Удалить историю?")) socket.emit('clear_chat'); }
+        function clearChat() { if(confirm("Видалити історію?")) socket.emit('clear_chat'); }
         socket.on('chat_cleared', function() { document.getElementById('chat').innerHTML = ''; });
     </script>
 </body>
