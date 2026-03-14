@@ -1,71 +1,62 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>FlashMSG - Чат</title>
+    <title>FlashMSG - Чат та Друзі</title>
     <style>
-        body { font-family: sans-serif; display: flex; margin: 0; background: #f0f2f5; }
-        .sidebar { width: 300px; background: white; height: 100vh; border-right: 1px solid #ddd; padding: 20px; overflow-y: auto; }
-        .main-chat { flex-grow: 1; padding: 20px; }
-        .section { margin-bottom: 30px; }
-        .user-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
-        .btn { padding: 4px 8px; border: none; cursor: pointer; border-radius: 4px; text-decoration: none; font-size: 12px; }
-        .btn-add { background: #0084ff; color: white; }
-        .btn-ok { background: #28a745; color: white; }
-        .btn-no { background: #dc3545; color: white; }
-        .badge { background: #ff4444; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; margin: 0; background: #121212; color: white; }
+        .sidebar { width: 320px; background: #1e1e1e; height: 100vh; border-right: 1px solid #333; padding: 15px; overflow-y: auto; }
+        .chat-area { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; }
+        .card { background: #2d2d2d; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #444; }
+        .btn { padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; text-decoration: none; font-size: 12px; color: white; }
+        .btn-blue { background: #007bff; }
+        .btn-green { background: #28a745; }
+        .btn-red { background: #dc3545; }
+        .user-row { display: flex; justify-content: space-between; align-items: center; }
+        h3 { border-bottom: 1px solid #444; padding-bottom: 5px; color: #00d4ff; }
     </style>
 </head>
 <body>
 
 <div class="sidebar">
     <h2>FlashMSG</h2>
-    
-    <div class="section">
-        <h3>Запити {% if requests %}<span class="badge">{{ requests|length }}</span>{% endif %}</h3>
-        {% for req in requests %}
-        <div class="user-item">
-            <span>{{ req.sender.username }}</span>
-            <div>
-                <a href="{{ url_for('accept_friend', req_id=req.id) }}" class="btn btn-ok">✓</a>
-                <a href="{{ url_for('reject_friend', req_id=req.id) }}" class="btn btn-no">×</a>
-            </div>
-        </div>
-        {% else %}
-        <p style="color: gray; font-size: 13px;">Немає нових запитів</p>
-        {% endfor %}
-    </div>
 
-    <div class="section">
-        <h3>Мої друзі</h3>
-        {% for f in friends %}
-        <div class="user-item">
-            <strong>
-                {% if f.sender_id == current_user.id %} {{ f.receiver.username }} 
-                {% else %} {{ f.sender.username }} {% endif %}
-            </strong>
-            <a href="{{ url_for('reject_friend', req_id=f.id) }}" class="btn btn-no" onclick="return confirm('Видалити?')">Видалити</a>
+    <h3>Запити ({{ requests|length }})</h3>
+    {% for r in requests %}
+    <div class="card user-row">
+        <span>{{ r.sender.username }}</span>
+        <div>
+            <a href="{{ url_for('accept_friend', req_id=r.id) }}" class="btn btn-green">✓</a>
+            <a href="{{ url_for('reject_friend', req_id=r.id) }}" class="btn btn-red">×</a>
         </div>
-        {% else %}
-        <p style="color: gray; font-size: 13px;">Список порожній</p>
-        {% endfor %}
     </div>
+    {% endfor %}
 
-    <div class="section">
-        <h3>Знайти людей</h3>
-        {% for user in all_users %}
-        <div class="user-item">
-            <span>{{ user.username }}</span>
-            <a href="{{ url_for('add_friend', user_id=user.id) }}" class="btn btn-add">Додати</a>
-        </div>
-        {% endfor %}
+    <h3>Мої друзі</h3>
+    {% for f in friends %}
+    <div class="card user-row">
+        <strong>
+            {% if f.sender_id == current_user.id %} {{ f.receiver.username }} {% else %} {{ f.sender.username }} {% endif %}
+        </strong>
+        <a href="{{ url_for('reject_friend', req_id=f.id) }}" class="btn btn-red">Видалити</a>
     </div>
+    {% endfor %}
+
+    <h3>Знайти людей</h3>
+    {% for u in all_users %}
+    <div class="card user-row">
+        <span>{{ u.username }}</span>
+        <a href="{{ url_for('add_friend', user_id=u.id) }}" class="btn btn-blue">Додати</a>
+    </div>
+    {% endfor %}
 </div>
 
-<div class="main-chat">
-    <h1>Вітаємо, {{ current_user.username }}!</h1>
-    <p>Оберіть друга зліва, щоб почати спілкування.</p>
+<div class="chat-area">
+    <div style="padding: 20px;">
+        <h1>Вітаємо, {{ current_user.username }}!</h1>
+        <div id="messages" style="height: 400px; background: #1e1e1e; border-radius: 10px; padding: 15px; overflow-y: scroll; border: 1px solid #333;">
+            </div>
     </div>
+</div>
 
 </body>
 </html>
