@@ -1,43 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>FlashMSG - Головна</title>
+    <title>FlashMSG</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         body { font-family: sans-serif; display: flex; margin: 0; background: #121212; color: #eee; height: 100vh; }
         .sidebar { width: 280px; background: #1e1e1e; padding: 20px; border-right: 1px solid #333; overflow-y: auto; }
         .chat { flex-grow: 1; display: flex; flex-direction: column; padding: 20px; }
-        .msg-box { flex-grow: 1; background: #252525; border-radius: 10px; padding: 15px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #333; }
-        .input-area { display: flex; gap: 10px; }
-        input { flex-grow: 1; padding: 12px; border-radius: 5px; border: none; background: #333; color: white; }
-        button { padding: 10px 20px; background: #0084ff; border: none; color: white; border-radius: 5px; cursor: pointer; }
-        .card { background: #2d2d2d; padding: 10px; border-radius: 5px; margin-bottom: 8px; border: 1px solid #444; }
-        a { color: #00d4ff; text-decoration: none; font-size: 13px; }
+        .msg-box { flex-grow: 1; background: #252525; border-radius: 10px; padding: 15px; overflow-y: auto; border: 1px solid #333; margin-bottom: 10px; }
+        input { flex-grow: 1; padding: 12px; background: #333; color: white; border: none; border-radius: 5px; }
+        button { padding: 10px 20px; background: #0084ff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .card { background: #2d2d2d; padding: 10px; border-radius: 5px; margin-bottom: 8px; border: 1px solid #444; font-size: 14px; }
     </style>
 </head>
 <body>
     <div class="sidebar">
         <h3>FlashMSG</h3>
-        <p>Привіт, <b>{{ current_user.username }}</b></p>
-        <a href="/logout" style="color: #ff4d4d;">Вийти</a>
+        <p>Привіт, {{ current_user.username }}</p>
         <hr>
         <h4>Запити</h4>
-        {% for r in requests %}
-            <div class="card">{{ r.sender.username }} <a href="{{ url_for('accept_friend', req_id=r.id) }}">✅ Прийняти</a></div>
-        {% endfor %}
+        {% for r in requests %}<div class="card">{{ r.sender.username }} <a href="#">✅</a></div>{% endfor %}
         <h4>Друзі</h4>
-        {% for f in friends %}
-            <div class="card">👤 {% if f.sender_id == current_user.id %}{{ f.receiver.username }}{% else %}{{ f.sender.username }}{% endif %}</div>
-        {% endfor %}
-        <h4>Користувачі</h4>
-        {% for u in all_users %}
-            <div class="card">{{ u.username }} <a href="{{ url_for('add_friend', user_id=u.id) }}">➕</a></div>
-        {% endfor %}
+        {% for f in friends %}<div class="card">👤 {% if f.sender_id == current_user.id %}{{ f.receiver.username }}{% else %}{{ f.sender.username }}{% endif %}</div>{% endfor %}
     </div>
     <div class="chat">
         <div class="msg-box" id="messages"></div>
-        <div class="input-area">
-            <input type="text" id="myMsg" placeholder="Напишіть щось..." onkeypress="if(event.key==='Enter')send()">
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="myMsg" onkeypress="if(event.key==='Enter')send()">
             <button onclick="send()">Надіслати</button>
         </div>
     </div>
@@ -45,14 +34,12 @@
         var socket = io();
         function send() {
             var input = document.getElementById('myMsg');
-            if(input.value.trim() !== "") { socket.emit('message', input.value); input.value = ''; }
+            if(input.value.trim()){ socket.emit('message', input.value); input.value = ''; }
         }
         socket.on('message', function(data) {
             var p = document.createElement('p');
-            p.innerHTML = '<strong>' + data.user + ':</strong> ' + data.msg;
-            var box = document.getElementById('messages');
-            box.appendChild(p);
-            box.scrollTop = box.scrollHeight;
+            p.innerHTML = '<b>' + data.user + ':</b> ' + data.msg;
+            document.getElementById('messages').appendChild(p);
         });
     </script>
 </body>
