@@ -13,13 +13,13 @@
         .login-box button { width: 100%; background:#40a7e3; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; }
         #main-container { display:none; width:100%; height: 100%; flex-direction:row; }
         .sidebar { width: 300px; background: #17212b; border-right: 1px solid #0e1621; display: flex; flex-direction: column; }
-        .main-chat { flex: 1; display: flex; flex-direction: column; background: url('https://oshit.com/uploads/posts/2021-04/1618584852_41-p-fon-telegramm-45.jpg'); background-size: cover; }
+        .main-chat { flex: 1; display: flex; flex-direction: column; background: #0e1621; }
         .header { background: #17212b; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000; }
         #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
         .msg-row { display: flex; gap: 10px; max-width: 80%; margin: 4px 0; }
         .mine { align-self: flex-end; flex-direction: row-reverse; }
         .other { align-self: flex-start; }
-        .bubble { padding: 8px 12px; border-radius: 12px; background: #182533; font-size: 15px; }
+        .bubble { padding: 8px 12px; border-radius: 12px; background: #182533; font-size: 15px; position: relative; }
         .mine .bubble { background: #2b5278; }
         .avatar { width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; }
         .input-area { background: #17212b; padding: 15px; display: flex; gap: 12px; align-items: center; }
@@ -28,10 +28,8 @@
     </style>
 </head>
 <body>
-
     <div id="login-overlay">
         <div class="login-box">
-            <img src="https://cdn-icons-png.flaticon.com/512/302/302353.png" width="80" style="margin-bottom:15px">
             <h2>FLASH<span style="color:#ffcc00">MSG</span></h2>
             <input type="text" id="user" placeholder="Логін">
             <input type="password" id="pass" placeholder="Пароль">
@@ -39,115 +37,52 @@
             <p id="err" style="color:#e53935; font-size:12px; margin-top:10px;"></p>
         </div>
     </div>
-
     <div id="main-container">
-        <div class="sidebar">
-            <div style="padding:20px; border-bottom:1px solid #0e1621"><b>FLASH MSG</b></div>
-            <div style="padding:15px; color:#40a7e3; font-size:13px;">Загальний чат активний</div>
-        </div>
+        <div class="sidebar"><div style="padding:20px;"><b>FLASH MSG</b></div></div>
         <div class="main-chat">
-            <div class="header">
-                <div>
-                    <h3 style="margin:0">FlashMsg Chat</h3>
-                    <div id="status" style="font-size:12px; color:#40a7e3; height:15px;"></div>
-                </div>
-                <div class="btn" style="color:#e53935; font-size:12px;" onclick="clearChat()">ОЧИСТИТИ</div>
-            </div>
+            <div class="header"><h3 id="chat-title">Загальний чат</h3></div>
             <div id="chat"></div>
             <div class="input-area">
-                <label class="btn" style="font-size:20px;">📎<input type="file" id="f-in" style="display:none" onchange="upImg()"></label>
-                <input type="text" id="m" placeholder="Написати повідомлення..." oninput="sendTyping()" onkeypress="if(event.keyCode==13) send()">
-                <div class="btn" onclick="send()">ВІДПРАВИТИ</div>
+                <label class="btn">📎<input type="file" id="f-in" style="display:none" onchange="upImg()"></label>
+                <input type="text" id="m" placeholder="Повідомлення..." onkeypress="if(event.keyCode==13) send()">
+                <div class="btn" onclick="send()">➤</div>
             </div>
         </div>
     </div>
-
     <script>
-        var socket = io({
-            transports: ['websocket', 'polling'],
-            upgrade: true
-        });
-
+        var socket = io({ transports: ['websocket', 'polling'] });
         var myName = "";
-
-        socket.on('connect', () => { console.log('Підключено до сервера!'); });
-        
-        socket.on('connect_error', (err) => {
-            console.error('Помилка:', err);
-            document.getElementById('err').innerText = "Помилка мережі. Перевір інтернет.";
-        });
-
-        function getClr(n) {
-            let clrs = ['#e17076', '#73c2fb', '#6fb466', '#ffc471', '#9470e4'];
-            return clrs[n.length % clrs.length];
-        }
-
         function login() {
-            var u = document.getElementById('user').value.trim();
-            var p = document.getElementById('pass').value.trim();
-            if(u && p) {
-                socket.emit('login_or_register', {username: u, password: p});
-            } else {
-                document.getElementById('err').innerText = "Введіть логін та пароль!";
-            }
+            var u = document.getElementById('user').value;
+            var p = document.getElementById('pass').value;
+            if(u && p) socket.emit('login_or_register', {username: u, password: p});
         }
-
         socket.on('login_success', function(data) {
             myName = data.username;
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('main-container').style.display = 'flex';
         });
-
-        socket.on('login_error', function(data) { 
-            // Переклад повідомлень про помилки від сервера
-            let msg = data.msg;
-            if(msg === "Неверный пароль!") msg = "Невірний пароль!";
-            document.getElementById('err').innerText = msg; 
-        });
-
+        socket.on('login_error', function(data) { document.getElementById('err').innerText = data.msg; });
         function send() {
             var m = document.getElementById('m');
-            if(m.value.trim() && myName) {
-                socket.emit('send_message', {username: myName, message: m.value});
-                m.value = '';
-            }
+            if(m.value.trim()) { socket.emit('send_message', {username: myName, message: m.value}); m.value = ''; }
         }
-
         function upImg() {
             var file = document.getElementById('f-in').files[0];
             var reader = new FileReader();
-            reader.onloadend = function() { 
-                socket.emit('send_image', {username: myName, image: reader.result}); 
-            }
+            reader.onloadend = function() { socket.emit('send_image', {username: myName, image: reader.result}); }
             if(file) reader.readAsDataURL(file);
         }
-
         socket.on('receive_message', function(data) {
             var c = document.getElementById('chat');
             var isM = data.username === myName;
-            var content = data.image ? `<img src="${data.image}" style="max-width:200px; border-radius:10px; display:block;">` : data.message;
-
+            var content = data.image ? `<img src="${data.image}" style="max-width:200px; border-radius:10px;">` : data.message;
             c.innerHTML += `<div class="msg-row ${isM ? 'mine' : 'other'}">
-                <div class="avatar" style="background:${getClr(data.username)}">${data.username[0].toUpperCase()}</div>
-                <div class="bubble">
-                    ${!isM ? `<b style="color:#40a7e3; font-size:12px;">${data.username}</b><br>` : ''}
-                    ${content}
-                    <span style="font-size:10px; opacity:0.5; margin-left:10px;">${data.time || ''}</span>
-                </div>
+                <div class="avatar" style="background:#40a7e3">${data.username[0].toUpperCase()}</div>
+                <div class="bubble"><b>${data.username}</b><br>${content}<br><small style="font-size:9px; opacity:0.6">${data.time}</small></div>
             </div>`;
             c.scrollTop = c.scrollHeight;
-            document.getElementById('status').innerText = '';
         });
-
-        function sendTyping() { if(myName) socket.emit('typing', {username: myName}); }
-
-        socket.on('display_typing', function(data) {
-            document.getElementById('status').innerText = data.username + ' пише...';
-            setTimeout(() => document.getElementById('status').innerText = '', 2000);
-        });
-
-        function clearChat() { if(confirm("Видалити історію?")) socket.emit('clear_chat'); }
-        socket.on('chat_cleared', function() { document.getElementById('chat').innerHTML = ''; });
     </script>
 </body>
 </html>
